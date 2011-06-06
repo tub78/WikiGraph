@@ -1,10 +1,64 @@
+"""
+WikiGraph
+"""
 
+# Globals
+
+#
 # approximate maximum file size in bytes
 MAXFILESIZE = 30000
 
+
+# Functions
+
+#
+def flatten_list_of_lists(list_of_lists):
+    """ Flatten list of lists
+    Tests:
+        >>> flatten_list_of_lists([])
+        []
+        >>> flatten_list_of_lists(['a', 'b'])
+        ['a', 'b']
+        >>> flatten_list_of_lists(['a', 'b', 'c', ['a1', 'b1'], [['a2.1'], ['a2.2', 'b2.2'], ['a2.3', 'b2.3', 'c2.3']]])
+        ['a', 'b', 'c', 'a1', 'b1', ['a2.1'], ['a2.2', 'b2.2'], ['a2.3', 'b2.3', 'c2.3']]
+    """
+    import itertools
+    return list(itertools.chain.from_iterable(list_of_lists))
+    #
+
+#
+def get_basename_without_extension(filepath):
+    """ As described
+    Tests:
+        >>> get_basename_without_extension('test')
+        'test'
+        >>> get_basename_without_extension('test.txt')
+        'test'
+        >>> get_basename_without_extension('/this/is/a/more/involved/test.txt')
+        'test'
+        >>> get_basename_without_extension('../what/../..//about///test.txt')
+        'test'
+    """
+    import os
+    return os.path.splitext(os.path.split(filepath)[1])[0]
+    #
+
 #
 def get_files_from_path_with_ext(path, extension):
-    """ Get list of filepaths from path with given extension """
+    """ Get list of filepaths from path with given extension
+    Tests:
+        >>> import os, tempfile
+        >>> tmpdir = tempfile.mkdtemp(suffix='', prefix='wikigraph')
+        >>> fp1 = tempfile.NamedTemporaryFile(mode='w+b', bufsize=-1, suffix='.txt', prefix='tmp', dir=tmpdir, delete=True)
+        >>> fp2 = tempfile.NamedTemporaryFile(mode='w+b', bufsize=-1, suffix='.txt', prefix='tmp', dir=tmpdir, delete=True)
+        >>> fp1.writelines(['Title: ' + get_basename_without_extension(fp1.name) + '\\n'])
+        >>> fp2.writelines(['Title: ' + get_basename_without_extension(fp2.name) + '\\n'])
+        >>> fp1.flush()
+        >>> fp2.flush()
+        >>> get_files_from_path_with_ext(tmpdir, 'txt').sort() == [fp1.name, fp2.name].sort()
+        True
+
+    """
     import os, glob
     filepaths = []
     try:
@@ -15,49 +69,63 @@ def get_files_from_path_with_ext(path, extension):
     return filepaths
     #
 
-
 #
 def get_links_from_page(filepath):
+    """ Get list of filepaths from path with given extension
+    Tests:
+        >>> import os, tempfile
+        >>> tmpdir = tempfile.mkdtemp(suffix='', prefix='wikigraph')
+        >>> fp1 = tempfile.NamedTemporaryFile(mode='w+b', bufsize=-1, suffix='.txt', prefix='tmp', dir=tmpdir, delete=True)
+        >>> fp2 = tempfile.NamedTemporaryFile(mode='w+b', bufsize=-1, suffix='.txt', prefix='tmp', dir=tmpdir, delete=True)
+        >>> fp1.writelines(['Title: ' + get_basename_without_extension(fp1.name) + '\\n', '[[' + get_basename_without_extension(fp2.name) + ']]' + '\\n'])
+        >>> fp2.writelines(['Title: ' + get_basename_without_extension(fp2.name) + '\\n', '[[' + get_basename_without_extension(fp1.name) + ']]' + '\\n'])
+        >>> fp1.flush()
+        >>> fp2.flush()
+        >>> get_links_from_page(fp2.name) + get_links_from_page(fp1.name) == [get_basename_without_extension(fp1.name), get_basename_without_extension(fp2.name)]
+        True
+
+    """
     import re
     import itertools
     links = []
     try:
         with open(filepath) as fp:
             lines = fp.readlines(MAXFILESIZE)
-        # links = flatten(map(re.findall("\[\[([^\]]*)\]\]"), lines))
-        links = list(itertools.chain.from_iterable(map(lambda ll: re.findall("\[\[([^\]]*)\]\]", ll), lines)))
-
-        # from itertools import chain 
-        # l=[[1,2,3],[4,5,6], [7], [8,9]]*99
-        # list(chain.from_iterable(l))
-
-        # [item for sublist in l for item in sublist]
-
+        # extact links - removing braces and descriptions e.g. [[Special:Header|header]] -> Special:Header
+        links = flatten_list_of_lists(map(lambda ll: re.findall("\[\[([^\]\|]*)(?:\|[^\]]*)?\]\]", ll), lines))
+        # remove ":" characters e.g. Special:Header -> SpecialHeader
+        links = map(lambda ll: re.sub(":","",ll), links)
     except Exception:
         print "Error: Could not retrieve links."
     return links
     #
 
 
+# WikiGraph Class
+
 #
 class WikiGraph:
     """ Blah
 
-    _index - information about wiki pages
-    _pages - ordering of pages in graph
-    _graph - representation of graph
+    Attributes:
 
+        _graph - representation of graph (NetworkX), with nodes storing
+        information about wiki pages
 
     Methods:
 
-        num_pages()
+        __init__()
+        __repr__()
 
+        num_pages()
         add_pages()
         add_page()
 
+        validate_page_paths()
+
         update_links()
 
-        draw_graph()
+        draw()
 
         get_page_rank()
         get_hubs_and_authorities()
@@ -74,37 +142,52 @@ class WikiGraph:
         label_topics()
         label_pages()
 
+    Tests:
 
-    Test
-    >>> [0, 0, 0]
-    [0, 0, 0]
+        >>> [0, 0, 0]
+        [0, 0, 0]
 
-    >>> A ('/Users/stu/Desktop/Dropbox/Documents/TrunkNotes/Notes', 'txt')
-    [0, 0, 0]
+        >>> import os, tempfile
+        >>> tmpdir = tempfile.mkdtemp(suffix='', prefix='wikigraph')
+        >>> fp1 = tempfile.NamedTemporaryFile(mode='w+b', bufsize=-1, suffix='.txt', prefix='tmp', dir=tmpdir, delete=True)
+        >>> fp2 = tempfile.NamedTemporaryFile(mode='w+b', bufsize=-1, suffix='.txt', prefix='tmp', dir=tmpdir, delete=True)
+        >>> fp1.writelines(['Title: ' + get_basename_without_extension(fp1.name) + '\\n'])
+        >>> fp2.writelines(['Title: ' + get_basename_without_extension(fp2.name) + '\\n'])
+        >>> fp1.flush()
+        >>> fp2.flush()
+        >>> filenames = get_files_from_path_with_ext(tmpdir, 'txt')
+        >>> WG = WikiGraph()
+        >>> WG.add_pages(filenames)
+        2
+        >>> WG.validate_page_paths()
+        0
+
     """
     #
 
     #
     def __init__(self):
-        """
-        """
-        import scipy.sparse as scipysp
-        import numpy
+        """ Constructor """
+        import networkx as nx
+        self._graph = nx.DiGraph()
+        #
 
-        # information about wiki pages
-        ## self._index = {}
-        # ordering of pages in graph
-        ## self._pages = ()
-        # representation of graph
-        self._graph = nx.Graph()
-        ## scipysp.coo_matrix((numpy.array([]),(numpy.array([]), numpy.array([]))),(1,1))
+    #
+    def __repr__(self):
+        """ Page names and adjacency structure """
+        import numpy as np
+        import networkx as nx
+        import scipy as sp
+        if self.num_pages() <= 10:
+            return str(self._graph.nodes()) + "\n" + str(nx.convert.to_scipy_sparse_matrix(self._graph, dtype=np.int16))
+        else:
+            return "Nodes: {}, Edges: {}".format(self._graph.number_of_nodes(), self._graph.number_of_edges())
         #
 
 
     #
     def num_pages(self):
         """ Number of pages """
-        ## return len(self._index)
         return len(self._graph)
         #
 
@@ -115,12 +198,12 @@ class WikiGraph:
         Arguments
             filepaths: an array of filepaths
         Returns
-            count_added: tuple listing number of files successfully added
+            N: number of files added
         """
-        count_before = self.num_pages()
+        N0 = self.num_pages()
         for fn in filepaths: self.add_page(fn)
-        count_after = self.num_pages()
-        return count_after - count_before
+        N1 = self.num_pages()
+        return N1 - N0
         #
 
     #
@@ -130,44 +213,61 @@ class WikiGraph:
         Arguments
             filepath: path to a file
         Returns
-            success: boolean, whether page was added successfully
+            (boolean, N): whether page was previously unknown, number of edges added
         """
-        import os
-        filename = os.path.splitext(os.path.split(filepath)[1])[0]
-        ##self._index[filename] = {'path': filepath}
+        filename = get_basename_without_extension(filepath)
+        N0 = self.num_pages()
+        # add node
         self._graph.add_node(filename, {'path': filepath})
-        #
+        # extract links
         linked_filenames = get_links_from_page(filepath)
-        self._graph.add_edges_from(zip([filenames]*len(linked_filenames), linked_filenames))
-        return True
+        # add edges
+        self._graph.add_edges_from(zip([filename]*len(linked_filenames), linked_filenames))
+        return self.num_pages()>N0, len(linked_filenames)
         #
 
-    #
-    def update_links(self):
-        """ (Re)creates the link structure by scanning all wiki pages
-        Arguments
-            none
-        Returns
-            N: number of links added
-        """
-        ## create frozen ordering of current pages
-        ##self._pages = self._index.keys()
-        ##for pp, ppdat in self._index.iteritems():
-        ##    add_page_links(pp, get_links_from_page(ppdat['path']))
-        #
-        for pp, ppdat in self._graph.nodes(data=True).iteritems()
-            linked_filenames = get_links_from_page(ppdat['path'])
-            self._graph.add_edges_from(zip([pp]*len(linked_filenames), linked_filenames))
-        #
-        return True
-        #
 
     #
-    def __repr__(self):
-        """ Page names and adjacency structure """
-        ##spmat, node = nx.attr_sparse_matrix(self._graph, rc_order=range(self._graph.number_of_nodes()))
-        import numpy
-        return str(self._graph.nodes()) + "\n" + str(nx.convert.to_scipy_sparse_matrix(self._graph, dtype=numpy.int16))
+    def validate_page_paths(self, keepunknown=True):
+        """ Adds 'unknown' as the 'path' for nodes when attribute is missing """
+        N0 = len(self._graph)
+        if keepunknown:
+            self._graph.add_nodes_from([ppdat[0] for ppdat in self._graph.nodes(data=True) if 'path' not in ppdat[1]], **{'path': "unknown"})
+        else:
+            self._graph.remove_nodes_from([ppdat[0] for ppdat in self._graph.nodes(data=True) if 'path' not in ppdat[1]])
+        N1 = len(self._graph)
+        return N1 - N0
+        #
+
+
+    # def update_links(self):
+    #     """ (Re)creates the link structure by scanning all wiki pages
+    #     Arguments
+    #         none
+    #     Returns
+    #         N: number of links added
+    #     """
+    #     N0 = self._graph.number_of_edges()
+    #     for ppdat in self._graph.nodes(data=True):
+    #         linked_filenames = get_links_from_page(ppdat[1]['path'])
+    #         self._graph.add_edges_from(zip([ppdat[0]]*len(linked_filenames), linked_filenames))
+    #     N1 = self._graph.number_of_edges()
+    #     return N1 - N0
+
+    #
+    def draw(self):
+        """ Draw the graph """
+        import networkx as nx
+        #import matplotlib.pyplot as plt
+        #plt.figure(1,figsize=(8,8))
+        #
+        #nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.spring_layout(self._graph), with_labels=True)
+        #nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.spectral_layout(self._graph), with_labels=False)
+        #nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.graphviz_layout(self._graph,prog="neato"), with_labels=False)
+        nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.circular_layout(self._graph), with_labels=False)
+        #
+        #plt.savefig("atlas.png",dpi=75)
+        return True
         #
 
 #
@@ -175,14 +275,14 @@ if __name__ == "__main__":
     #
     #import doctest
     #doctest.testmod()
-    filenames = get_files_from_path_with_ext('/Users/stu/Desktop/Dropbox/Documents/TrunkNotes/Notes', 'txt')
     #
-    links = get_links_from_page('/Users/stu/Desktop/Dropbox/Documents/TrunkNotes/Notes/Blog.txt')
-    #
+    directory = '/Users/stu/TrunkNotes/Notes'
+    extension = 'txt'
+    filenames = get_files_from_path_with_ext(directory, extension)
     WG = WikiGraph()
     WG.add_pages(filenames)
-    #
-
+    WG.validate_page_paths(keepunknown=False)
+    WG.draw()
 
 
 
