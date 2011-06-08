@@ -1,0 +1,42 @@
+# Glob
+# ... hgignore a file/directory when a pattern matches any subsequence of file or directory components from the file's fullpath
+syntax: glob
+
+*~
+.*.swp
+*.swp
+
+.DS_Store
+.subversion
+.hg
+
+*.gz
+*.tgz
+*.bz2
+*.zip
+*.jar
+
+*.a
+*.o
+*.so
+*.dll
+*.a
+*.so
+*.dll
+*.dylib
+*.mexglx
+*.mexmac
+*.mexmaci
+
+*.depend
+.RData
+.Rhistory
+
+
+# Regular Expressions
+# ... "^" forces hgignore to match only the repository root
+syntax: regexp
+
+^Html
+
+
