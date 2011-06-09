@@ -384,7 +384,7 @@ class WikiGraph:
         #
 
     #
-    def draw(self, design=None, labels=False):
+    def draw(self, design=None, labels=False, **kwargs):
         """ Draw the graph """
         import networkx as nx
         import matplotlib.pyplot as plt
@@ -398,31 +398,31 @@ class WikiGraph:
 
         #
         if design=='circ':
-            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.circular_layout(self._graph), with_labels=labels)
+            nx.drawing.nx_pylab.draw_networkx(self._graph, nx.circular_layout(self._graph), labels, **kwargs)
 
         #
         elif design=='mpl':
-            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.spring_layout(self._graph), with_labels=labels)
+            nx.drawing.nx_pylab.draw_networkx(self._graph, nx.spring_layout(self._graph), labels, **kwargs)
 
         #
         elif design=='spec':
-            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.spectral_layout(self._graph), with_labels=labels)
+            nx.drawing.nx_pylab.draw_networkx(self._graph, nx.spectral_layout(self._graph), labels, **kwargs)
 
         #
         elif design=='neato':
-            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.pydot_layout(self._graph,prog="neato"), with_labels=labels)
+            nx.drawing.nx_pylab.draw_networkx(self._graph, nx.pydot_layout(self._graph,prog="neato"), labels, **kwargs)
 
         #
         elif design=='twopi':
-            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.pydot_layout(self._graph,prog="twopi"), with_labels=labels)
+            nx.drawing.nx_pylab.draw_networkx(self._graph, nx.pydot_layout(self._graph,prog="twopi"), labels, **kwargs)
 
         #
         elif design=='fdp':
-            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.pydot_layout(self._graph,prog="fdp"), with_labels=labels)
+            nx.drawing.nx_pylab.draw_networkx(self._graph, nx.pydot_layout(self._graph,prog="fdp"), labels, **kwargs)
 
         #
         elif design=='sfdp':
-            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.pydot_layout(self._graph,prog="sfdp"), with_labels=labels)
+            nx.drawing.nx_pylab.draw_networkx(self._graph, nx.pydot_layout(self._graph,prog="sfdp"), labels, **kwargs)
 
         #
         else:
@@ -473,9 +473,13 @@ if __name__ == "__main__":
 
     ARGS, EXTRA_ARGS = parser.parse_known_args()
 
+    # HACK!
+    kwargs = {}
+    kwargs.update(zip(EXTRA_ARGS[0:len(EXTRA_ARGS):2], map(lambda ee: float(ee), EXTRA_ARGS[1:len(EXTRA_ARGS):2])))
+
+
     print "\n\n\nTESTING>\n\n\n" + str(ARGS) + "\n\n\n"
-    #print "............................... PROCEEDING TO SYS.EXIT()\n\n\n"
-    #sys.exit()
+    #print "."*30 + " PROCEEDING TO SYS.EXIT()\n\n\n"; sys.exit()
 
     WG = WikiGraph()
     WG.add_pages(get_files_from_path_with_ext(ARGS.directory, ARGS.extension))
@@ -490,7 +494,6 @@ if __name__ == "__main__":
     if len(ARGS.tags) > 0:
         tagset = set(ARGS.tags)
         Nrm_nodes = WG.filter_by_tag(ARGS.alltags, tagset)
-        #WGdraw = WG.extract_by_tag(ARGS.alltags, tagset)
         print "Removed {} nodes not related to tags: '{}'".format(Nrm_nodes, str(ARGS.tags))
 
     if ARGS.numcomponents>0:
@@ -501,7 +504,10 @@ if __name__ == "__main__":
         Nrm_nodes = WG.prune_isolates()
         print "Removed {} isolated nodes".format(Nrm_nodes)
 
-    WG.draw(design=ARGS.design, labels=ARGS.labels) #, EXTRA_ARGS)
+
+    WG.draw(design=ARGS.design, labels=ARGS.labels, **kwargs)
+
+
 
 
 
