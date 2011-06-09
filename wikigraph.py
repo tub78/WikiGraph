@@ -8,7 +8,6 @@ WikiGraph
 # approximate maximum file size in bytes
 MAXFILESIZE = 30000
 
-
 # Functions
 
 #
@@ -146,32 +145,7 @@ class WikiGraph:
     Attributes:
 
         _graph - representation of graph (NetworkX), with nodes storing
-        information about wiki pages
-
-    Methods:
-
-        __init__()
-        __repr__()
-        num_pages()
-        add_pages()
-        add_page()
-        validate_page_info()
-        #update_links()
-        filter_by_tag()
-        extract_by_tag()
-
-        draw()
-
-        get_page_rank()
-        get_hubs_and_authorities()
-        page_similarity()
-        predict_missing_tags()
-        predict_related_pages()
-        add_tags()
-        add_related_pages()
-        train_topics()
-        label_topics()
-        label_pages()
+            information about wiki pages
 
     Tests:
 
@@ -190,7 +164,7 @@ class WikiGraph:
         >>> WG = WikiGraph()
         >>> WG.add_pages(filenames)
         2
-        >>> WG.validate_page_info()
+        >>> WG.prune_unknown_paths()
         0
 
     """
@@ -200,10 +174,13 @@ class WikiGraph:
     def __init__(self, digraph=None):
         """ Constructor """
         import networkx as nx
+
         if digraph:
             self._graph = digraph
         else:
             self._graph = nx.DiGraph()
+
+        self._default_node_attributes = {"path": "unknown", "tags": []}
         #
 
     #
@@ -212,7 +189,10 @@ class WikiGraph:
         import numpy as np
         import networkx as nx
         import scipy as sp
-        if self.num_pages() <= 10:
+
+        if self.num_pages() == 0:
+            return "Empty WikiGraph"
+        elif self.num_pages() <= 10:
             return str(self._graph.nodes()) + "\n" + str(nx.convert.to_scipy_sparse_matrix(self._graph, dtype=np.int16))
         else:
             return "Nodes: {}, Edges: {}".format(self._graph.number_of_nodes(), self._graph.number_of_edges())
@@ -228,7 +208,6 @@ class WikiGraph:
     #
     def add_pages(self, filepaths):
         """ Adds list of pages to the wiki graph
-
         Arguments
             filepaths: an array of filepaths
         Returns
@@ -243,23 +222,123 @@ class WikiGraph:
     #
     def add_page(self, filepath):
         """ Adds a single page to the wiki graph
-
         Arguments
             filepath: path to a file
         Returns
-            (boolean, N): whether page was previously unknown, number of edges added
+            boolean: whether page was previously unknown
         """
-        filename = get_basename_without_extension(filepath)
         N0 = self.num_pages()
-        # extract links
-        linked_filenames = get_links_from_page(filepath)
-        # extract tags
-        tags = get_tags_from_page(filepath)
-        # add node
-        self._graph.add_node(filename, {'path': filepath, 'tags': tags})
-        # add edges
-        self._graph.add_edges_from(zip([filename]*len(linked_filenames), linked_filenames))
-        return self.num_pages()>N0, len(linked_filenames)
+        nodename = get_basename_without_extension(filepath)
+        self._graph.add_node(nodename, {'path': filepath})
+        self.validate_page_attributes(nodename)
+        return self.num_pages()>N0
+        #
+
+    #
+    def add_tags(self):
+        """ Extract tags and add as a node attribute """
+        N = 0
+        for nodename in self._graph.nodes(): N += self.add_page_tags(nodename)
+        return N
+        #
+
+    #
+    def add_page_tags(self, nodename):
+        """ Extract tags and add as a node attribute """
+        assert self._graph.node[nodename].has_key('path'), "Was expecting node attribute named 'path'"
+        tags = get_tags_from_page(self._graph.node[nodename]['path'])
+        self._graph.node[nodename]['tags'] = tags
+        return len(self._graph.node[nodename]['tags'])
+        #
+
+    #
+    def rm_links(self):
+        """ Remove links """
+        N = self._graph.number_of_edges()
+        self._graph.remove_edges_from(self._graph.edges)
+        return N
+        #
+
+    #
+    def add_links(self):
+        """ Extract links and add as edges """
+        N0 = self._graph.number_of_edges()
+        for nodename in self._graph.nodes(): self.add_page_links(nodename)
+        N1 = self._graph.number_of_edges()
+        return N1 - N0
+        #
+
+    #
+    def add_page_links(self, nodename):
+        """ Extract links and add as edges """
+        assert self._graph.node[nodename].has_key('path'), "Was expecting node attribute named 'path'"
+        linked_filenames = get_links_from_page(self._graph.node[nodename]['path'])
+        # add to graph
+        N = len(linked_filenames)
+        self._graph.add_edges_from(zip([nodename]*N, linked_filenames))
+        self.validate_attributes(linked_filenames)
+        return N
+        #
+
+    #
+    def validate_attributes(self, nodenames):
+        """ Validate attributes from named nodes """
+        for nodename in nodenames: self.validate_page_attributes(nodename)
+        return True
+        #
+
+    #
+    def validate_page_attributes(self, nodename):
+        """ Validate attributes from node """
+        import copy
+        new_attr = copy.deepcopy(self._default_node_attributes)
+        new_attr.update(self._graph.node[nodename])
+        self._graph.node[nodename] = new_attr
+        return True
+        #
+
+
+
+
+    #
+    def get_node_attributes(self, name):
+        """ get node attributes """
+        return get_node_attributes(self._graph, name)
+        #
+
+    #
+    def set_node_attributes(self, name, values):
+        """ set node attributes """
+        set_node_attributes(self._graph, name, values)
+        return True
+        #
+
+
+
+    #
+    def prune_unknown_paths(self):
+        """ Remove nodes with default path attribute """
+        N0 = len(self._graph)
+        self._graph.remove_nodes_from([ppdat[0] for ppdat in self._graph.nodes(data=True) if ppdat[1]['path']==self._default_node_attributes['path'] ])
+        N1 = len(self._graph)
+        return N0 - N1
+        #
+
+
+
+
+    #
+    def prune_ccomponents(self, N):
+        """ Remove all but N largest weakly connected components from the graph """
+        import networkx as nx
+        N0 = len(self._graph)
+        listoflistsofnodes = nx.algorithms.components.weakly_connected.weakly_connected_components(self._graph)
+        Nccomps = len(listoflistsofnodes)
+        Nkeep = min(N, Nccomps)
+        nodes2rm = flatten_list_of_lists(listoflistsofnodes[Nkeep:Nccomps])
+        self._graph.remove_nodes_from(nodes2rm)
+        N1 = len(self._graph)
+        return N0 - N1, Nccomps-Nkeep
         #
 
     #
@@ -269,44 +348,17 @@ class WikiGraph:
         N0 = len(self._graph)
         self._graph.remove_nodes_from(nx.isolates(self._graph))
         N1 = len(self._graph)
-        return N1 - N0
+        return N0 - N1
         #
 
     #
-    def validate_page_info(self, keepunknown=True, defaultinfo={"path": "unknown", "tags": []}):
-        """ Adds 'unknown' as the 'path' for nodes when attribute is missing """
-        N0 = len(self._graph)
-        if keepunknown:
-            self._graph.add_nodes_from([ppdat[0] for ppdat in self._graph.nodes(data=True) if 'path' not in ppdat[1]], **defaultinfo)
-        else:
-            self._graph.remove_nodes_from([ppdat[0] for ppdat in self._graph.nodes(data=True) if 'path' not in ppdat[1]])
-        N1 = len(self._graph)
-        return N1 - N0
-        #
-
-
-    # def update_links(self):
-    #     """ (Re)creates the link structure by scanning all wiki pages
-    #     Arguments
-    #         none
-    #     Returns
-    #         N: number of links added
-    #     """
-    #     N0 = self._graph.number_of_edges()
-    #     for ppdat in self._graph.nodes(data=True):
-    #         linked_filenames = get_links_from_page(ppdat[1]['path'])
-    #         self._graph.add_edges_from(zip([ppdat[0]]*len(linked_filenames), linked_filenames))
-    #     N1 = self._graph.number_of_edges()
-    #     return N1 - N0
-
-    def get_pages_by_tags(self, alltags, tagset):
+    def select_pages_by_tags(self, alltags, tagset):
         """ Return a list of pages selected by tags
         """
         if alltags:
             nodelist = [ppdat[0] for ppdat in self._graph.nodes(data=True) if tagset.issubset(set(ppdat[1]['tags']))]
         else:
             nodelist = [ppdat[0] for ppdat in self._graph.nodes(data=True) if tagset.intersection(set(ppdat[1]['tags']))]
-        print "tagset: {}, subgraph: {}".format(str(tagset), len(nodelist))
         return nodelist
         #
 
@@ -314,11 +366,11 @@ class WikiGraph:
     def filter_by_tag(self, alltags, tagset):
         """ Filter graph using tags
         """
-        if len(tagset) == 0:
-            return True
-        nodelist = self.get_pages_by_tags(alltags, tagset)
+        N0 = len(self._graph)
+        nodelist = self.select_pages_by_tags(alltags, tagset)
         self._graph = self._graph.subgraph(nodelist)
-        return True
+        N1 = len(self._graph)
+        return N0 - N1
         #
 
     #
@@ -327,7 +379,7 @@ class WikiGraph:
         """
         if len(tagset) == 0:
             return self
-        nodelist = self.get_pages_by_tags(alltags, tagset)
+        nodelist = self.select_pages_by_tags(alltags, tagset)
         return WikiGraph(self._graph.subgraph(nodelist))
         #
 
@@ -358,15 +410,19 @@ class WikiGraph:
 
         #
         elif design=='neato':
-            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.graphviz_layout(self._graph,prog="neato"), with_labels=labels)
+            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.pydot_layout(self._graph,prog="neato"), with_labels=labels)
 
         #
         elif design=='twopi':
-            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.graphviz_layout(self._graph,prog="twopi"), with_labels=labels)
+            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.pydot_layout(self._graph,prog="twopi"), with_labels=labels)
+
+        #
+        elif design=='fdp':
+            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.pydot_layout(self._graph,prog="fdp"), with_labels=labels)
 
         #
         elif design=='sfdp':
-            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.graphviz_layout(self._graph,prog="sfdp"), with_labels=labels)
+            nx.drawing.nx_pylab.draw_networkx(self._graph, pos=nx.pydot_layout(self._graph,prog="sfdp"), with_labels=labels)
 
         #
         else:
@@ -382,102 +438,15 @@ class WikiGraph:
         return True
         #
 
-    # G : graph
-    #    A networkx graph 
-    # 
-    # pos : dictionary, optional
-    #    A dictionary with nodes as keys and positions as values.
-    #    If not specified a spring layout positioning will be computed.
-    #    See networkx.layout for functions that compute node positions.
-    # 
-    # ax : Matplotlib Axes object, optional
-    #    Draw the graph in the specified Matplotlib axes.  
-    # 
-    # with_labels:  bool, optional       
-    #    Set to True (default) to draw labels on the nodes.
-    # 
-    # nodelist: list, optional
-    #    Draw only specified nodes (default G.nodes())
-    # 
-    # edgelist: list
-    #    Draw only specified edges(default=G.edges())
-    # 
-    # node_size: scalar or array
-    #    Size of nodes (default=300).  If an array is specified it must be the
-    #    same length as nodelist. 
-    # 
-    # node_color: color string, or array of floats
-    #    Node color. Can be a single color format string (default='r'),
-    #    or a  sequence of colors with the same length as nodelist.
-    #    If numeric values are specified they will be mapped to
-    #    colors using the cmap and vmin,vmax parameters.  See
-    #    matplotlib.scatter for more details.
-    # 
-    # node_shape:  string
-    #    The shape of the node.  Specification is as matplotlib.scatter
-    #    marker, one of 'so^>v<dph8' (default='o').
-    # 
-    # alpha: float
-    #    The node transparency (default=1.0) 
-    # 
-    # cmap: Matplotlib colormap
-    #    Colormap for mapping intensities of nodes (default=None)
-    # 
-    # vmin,vmax: floats
-    #    Minimum and maximum for node colormap scaling (default=None)
-    # 
-    # width: float
-    #    Line width of edges (default =1.0)
-    # 
-    # edge_color: color string, or array of floats
-    #    Edge color. Can be a single color format string (default='r'),
-    #    or a sequence of colors with the same length as edgelist.
-    #    If numeric values are specified they will be mapped to
-    #    colors using the edge_cmap and edge_vmin,edge_vmax parameters.
-    # 
-    # edge_cmap: Matplotlib colormap
-    #    Colormap for mapping intensities of edges (default=None)
-    # 
-    # edge_vmin,edge_vmax: floats
-    #    Minimum and maximum for edge colormap scaling (default=None)
-    # 
-    # style: string
-    #    Edge line style (default='solid') (solid|dashed|dotted,dashdot)
-    # 
-    # labels: dictionary
-    #    Node labels in a dictionary keyed by node of text labels (default=None)
-    # 
-    # font_size: int
-    #    Font size for text labels (default=12)
-    # 
-    # font_color: string
-    #    Font color string (default='k' black)
-    # 
-    # font_weight: string
-    #    Font weight (default='normal')
-    # 
-    # font_family: string
-    #    Font family (default='sans-serif')
-    # 
-    # Examples
-    # --------
-    # >>> G=nx.dodecahedral_graph()
-    # >>> nx.draw(G)
-    # >>> nx.draw(G,pos=nx.spring_layout(G)) # use spring layout
-    # 
-    # >>> import pylab
-    # >>> limits=pylab.axis('off') # turn of axis 
-    # 
-    # Also see the NetworkX drawing examples at
-    # http://networkx.lanl.gov/gallery.html
-    # 
-    # See Also
-    # --------
-    # draw()
-    # draw_networkx_nodes()
-    # draw_networkx_edges()
-    # draw_networkx_labels()
-    # draw_networkx_edge_labels()
+#
+def whole_number(string):
+    import argparse
+    value = int(string)
+    if value < 0:
+        msg = "Error: {} is not a whole number".format(string)
+        raise argparse.ArgumentTypeError(msg)
+    return value
+    #
 
 #
 if __name__ == "__main__":
@@ -490,63 +459,47 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Analyze and visualize semantics and link structure of wiki')
 
-    parser.add_argument('--directory'   , default='/Users/stu/TrunkNotes/Notes' , type=str            , help='Directory where files containing wiki pages are stored (flat)')
-    parser.add_argument('--extension'   , default='.txt'                        , type=str            , help='Extension of files containing wiki pages')
-    parser.add_argument('--keepunknown' , default=False                         , action='store_true' , help='Whether to keep linked pages if no corresponding file is found')
-    parser.add_argument('--keepisolates', default=False                         , action='store_true' , help='Whether to keep isolated pages')
-    parser.add_argument('--tags'        , default=[], nargs='*'                 , type=str            , help='Tags to filter')
-    parser.add_argument('--alltags'     , default=False                         , action='store_true' , help='If true, only returns pages that contain ALL tags')
-    parser.add_argument('--design'      , default='circ'                        , type=str            , help='The type of display to generate', \
-            choices=['mpl', 'circ', 'spec', 'neato', 'twopi', 'sfdp'])
-    parser.add_argument('--labels'      , default=False                         , action='store_true' , help='Whether to show labels in displays')
+    parser.add_argument('--verbosity'    , default=0                             , type=int            , help='Level of verbosity for logging')
+    parser.add_argument('--directory'    , default='/Users/stu/TrunkNotes/Notes' , type=str            , help='Directory where files containing wiki pages are stored (flat)')
+    parser.add_argument('--extension'    , default='.txt'                        , type=str            , help='Extension of files containing wiki pages')
+    parser.add_argument('--keepunknown'  , default=False                         , action='store_true' , help='Whether to keep linked pages if no corresponding file is found')
+    parser.add_argument('--keepisolates' , default=False                         , action='store_true' , help='Whether to keep isolated pages')
+    parser.add_argument('--numcomponents', default=0                             , type=whole_number   , help='Number of largest connected components to keep (0 selects all)')
+    parser.add_argument('--tags'         , default=[], nargs='*'                 , type=str            , help='Tags to filter')
+    parser.add_argument('--alltags'      , default=False                         , action='store_true' , help='If true, only returns pages that contain ALL tags')
+    parser.add_argument('--design'       , default='circ'                        , type=str            , help='The type of display to generate', \
+            choices=['mpl', 'circ', 'spec', 'neato', 'twopi', 'fdp', 'sfdp'])
+    parser.add_argument('--labels'       , default=False                         , action='store_true' , help='Whether to show labels in displays')
 
-    ARGS = parser.parse_args()
+    ARGS, EXTRA_ARGS = parser.parse_known_args()
 
-    print "\n\n\nTESTING>\n\n\n" + str(ARGS) + "\n\n\n............................... PROCEEDING TO SYS.EXIT()\n\n\n"
+    print "\n\n\nTESTING>\n\n\n" + str(ARGS) + "\n\n\n"
+    #print "............................... PROCEEDING TO SYS.EXIT()\n\n\n"
     #sys.exit()
 
     WG = WikiGraph()
     WG.add_pages(get_files_from_path_with_ext(ARGS.directory, ARGS.extension))
-    WG.validate_page_info(keepunknown=ARGS.keepunknown)
+    WG.add_links()
+    WG.add_tags()
+    if not(ARGS.keepunknown):
+        Nrm_nodes = WG.prune_unknown_paths()
+        print "Removed {} external nodes".format(Nrm_nodes)
 
-    if len(sys.argv) > 1:
+    if len(ARGS.tags) > 0:
         tagset = set(ARGS.tags)
-        WG.filter_by_tag(ARGS.alltags, tagset)
-        #
+        Nrm_nodes = WG.filter_by_tag(ARGS.alltags, tagset)
         #WGdraw = WG.extract_by_tag(ARGS.alltags, tagset)
+        print "Removed {} nodes not related to tags: '{}'".format(Nrm_nodes, str(ARGS.tags))
+
+    if ARGS.numcomponents>0:
+        Nrm_nodes, Nrm_comp = WG.prune_ccomponents(ARGS.numcomponents)
+        print "Removed {} nodes from {} smallest components".format(Nrm_nodes, Nrm_comp)
 
     if not(ARGS.keepisolates):
-        print "Removed {} isolated nodes".format(-WG.prune_isolates())
+        Nrm_nodes = WG.prune_isolates()
+        print "Removed {} isolated nodes".format(Nrm_nodes)
 
-    WG.draw(design=ARGS.design, labels=ARGS.labels)
-
-
-# diffusion graph segmentation cuts
-# pagerank, hubs and authorities, google matrix
-# blockmodels
-# isolates
-# (strongly) connected-components
-# k-NN: average degree connectivity
-# degree, degree_histogram
-# info
-# get/set_attributes
-# freeze
-
-#
-# Graphviz 
-#
-# bcomps   -
-# ccomps   - 
-# diffimg  - calculates difference between two images (by pixel) - http://www.graphviz.org/pdf/diffimg.1.pdf
-# dijkstra - single source distance filter                       - http://www.graphviz.org/pdf/dijkstra.1.pdf
-# gc       - analog to wc                                        - http://www.graphviz.org/pdf/gc.1.pdf
-# gvcolor  - flow colors through a ranked digraph                - http://www.graphviz.org/pdf/gvcolor.1.pdf
-# gvgen    - generate graphs                                     - http://www.graphviz.org/pdf/gvgen.1.pdf
-# gvpack   - merge and pack disjoint graphs                      - http://www.graphviz.org/pdf/gvpack.1.pdf
-# gvpr     - graph pattern scanning and processing language      - http://www.graphviz.org/pdf/gvpr.1.pdf
-#
-# smyrna   - viewing graphs tool
-#
+    WG.draw(design=ARGS.design, labels=ARGS.labels) #, EXTRA_ARGS)
 
 
 
