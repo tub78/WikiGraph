@@ -290,10 +290,14 @@ class WikiGraph:
     #
     def validate_page_attributes(self, nodename):
         """ Validate attributes from node """
-        import copy
-        new_attr = copy.deepcopy(self._default_node_attributes)
-        new_attr.update(self._graph.node[nodename])
-        self._graph.node[nodename] = new_attr
+        #import copy
+        #new_attr = copy.deepcopy(self._default_node_attributes)
+        #new_attr.update(self._graph.node[nodename])
+        #self._graph.node[nodename] = new_attr
+        defaultKeys = set(self._default_node_attributes.keys())
+        nodeKeys = set(self._graph.node[nodename].keys())
+        addKeys = defaultKeys.difference(nodeKeys)
+        self._graph.node[nodename].update(map(lambda kk: (kk, self._default_node_attributes[kk]), addKeys))
         return True
         #
 
@@ -480,10 +484,12 @@ if __name__ == "__main__":
     WG = WikiGraph()
     WG.add_pages(get_files_from_path_with_ext(ARGS.directory, ARGS.extension))
     WG.add_links()
-    WG.add_tags()
+
     if not(ARGS.keepunknown):
         Nrm_nodes = WG.prune_unknown_paths()
-        print "Removed {} external nodes".format(Nrm_nodes)
+        print "Removed {} nodes with unknown paths".format(Nrm_nodes)
+
+    WG.add_tags()
 
     if len(ARGS.tags) > 0:
         tagset = set(ARGS.tags)
