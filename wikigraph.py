@@ -290,10 +290,6 @@ class WikiGraph:
     #
     def validate_page_attributes(self, nodename):
         """ Validate attributes from node """
-        #import copy
-        #new_attr = copy.deepcopy(self._default_node_attributes)
-        #new_attr.update(self._graph.node[nodename])
-        #self._graph.node[nodename] = new_attr
         defaultKeys = set(self._default_node_attributes.keys())
         nodeKeys = set(self._graph.node[nodename].keys())
         addKeys = defaultKeys.difference(nodeKeys)
