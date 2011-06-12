@@ -33,7 +33,7 @@ usage: wikigraph.py [-h] [--verbosity VERBOSITY] [--directory DIRECTORY]
                     [--extension EXTENSION] [--keepunknown] [--keepisolates]
                     [--numcomponents NUMCOMPONENTS] [--tags [TAGS [TAGS ...]]]
                     [--alltags]
-                    [--design {mpl,circ,spec,neato,twopi,fdp,sfdp}] [--labels]
+                    [--layout {mpl,circ,spec,neato,twopi,fdp,sfdp}] [--labels]
                     [--figalpha FIGALPHA] [--figdpi {72,100,200,300}]
                     [--figtype {png,pdf,ps,eps,svg}] [--output OUTPUT]
 
@@ -57,7 +57,7 @@ optional arguments:
   --tags [TAGS [TAGS ...]]
                         Tags to filter
   --alltags             If true, only returns pages that contain ALL tags
-  --design {mpl,circ,spec,neato,twopi,fdp,sfdp}
+  --layout {mpl,circ,spec,neato,twopi,fdp,sfdp}
                         The layout algorithm to use (from graphviz, etc.)
   --labels              Whether to show labels in displays
   --figalpha FIGALPHA   Transparency level for figure background
@@ -79,7 +79,7 @@ The example linked above was generated with the following command:
 ``` bash
 wikigraph.py --directory $NOTES \
              --extension txt \
-             --design sfdp \
+             --layout sfdp \
              --labels \
              --tags Fun Family Events Exercise Health TrunkNotes Python Javascript \
              --numcomponents 1 \
