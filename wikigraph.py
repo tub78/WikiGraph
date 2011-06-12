@@ -384,57 +384,46 @@ class WikiGraph:
         #
 
     #
-    def draw(self, design=None, labels=False, **kwargs):
+    def draw(self, layout=None, labels=False, **kwargs):
         """ Draw the graph """
         import networkx as nx
-        import matplotlib.pyplot as plt
-        fig = plt.figure(1,figsize=(8,8))
-        fig.clear()
-        fig.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.95)
 
-
-        if not(design):
-            design = 'circ'
+        if not(layout):
+            layout = 'circ'
 
         #
-        if design=='circ':
+        if layout=='circ':
             nx.drawing.nx_pylab.draw_networkx(self._graph, nx.circular_layout(self._graph), labels, **kwargs)
 
         #
-        elif design=='mpl':
+        elif layout=='mpl':
             nx.drawing.nx_pylab.draw_networkx(self._graph, nx.spring_layout(self._graph), labels, **kwargs)
 
         #
-        elif design=='spec':
+        elif layout=='spec':
             nx.drawing.nx_pylab.draw_networkx(self._graph, nx.spectral_layout(self._graph), labels, **kwargs)
 
         #
-        elif design=='neato':
+        elif layout=='neato':
             nx.drawing.nx_pylab.draw_networkx(self._graph, nx.pydot_layout(self._graph,prog="neato"), labels, **kwargs)
 
         #
-        elif design=='twopi':
+        elif layout=='twopi':
             nx.drawing.nx_pylab.draw_networkx(self._graph, nx.pydot_layout(self._graph,prog="twopi"), labels, **kwargs)
 
         #
-        elif design=='fdp':
+        elif layout=='fdp':
             nx.drawing.nx_pylab.draw_networkx(self._graph, nx.pydot_layout(self._graph,prog="fdp"), labels, **kwargs)
 
         #
-        elif design=='sfdp':
+        elif layout=='sfdp':
             nx.drawing.nx_pylab.draw_networkx(self._graph, nx.pydot_layout(self._graph,prog="sfdp"), labels, **kwargs)
 
         #
         else:
-            print "Error: design not recognized"
+            print "Error: layout not recognized"
             return True
 
-        plt.axis('equal')
-        #plt.axis('image')
-        limits = plt.axis('off') # turn of axis 
-        plt.show()
-
-        #plt.savefig("atlas.png",dpi=75)
         return True
         #
 
@@ -457,7 +446,7 @@ if __name__ == "__main__":
     import sys
     import argparse
 
-    parser = argparse.ArgumentParser(description='Analyze and visualize semantics and link structure of wiki')
+    parser = argparse.ArgumentParser(description='Analyze and visualize semantics and link structure of wiki', epilog='Additional arguments pairs are passed to the drawing routine as keyword-values (floats assumed).')
 
     parser.add_argument('--verbosity'    , default=0                             , type=int            , help='Level of verbosity for logging')
     parser.add_argument('--directory'    , default='/Users/stu/TrunkNotes/Notes' , type=str            , help='Directory where files containing wiki pages are stored (flat)')
@@ -467,15 +456,24 @@ if __name__ == "__main__":
     parser.add_argument('--numcomponents', default=0                             , type=whole_number   , help='Number of largest connected components to keep (0 selects all)')
     parser.add_argument('--tags'         , default=[], nargs='*'                 , type=str            , help='Tags to filter')
     parser.add_argument('--alltags'      , default=False                         , action='store_true' , help='If true, only returns pages that contain ALL tags')
-    parser.add_argument('--design'       , default='circ'                        , type=str            , help='The type of display to generate', \
+    parser.add_argument('--layout'       , default='circ'                        , type=str            , help='The layout algorithm to use (from graphviz, etc.)', \
             choices=['mpl', 'circ', 'spec', 'neato', 'twopi', 'fdp', 'sfdp'])
     parser.add_argument('--labels'       , default=False                         , action='store_true' , help='Whether to show labels in displays')
+
+    parser.add_argument('--figalpha'     , default=0.7                           , type=float          , help='Transparency level for figure background')
+    parser.add_argument('--figdpi'       , default='72'                          , type=int            , help='DPI for saved figure', \
+            choices=[72, 100, 200, 300])
+    parser.add_argument('--figtype'      , default='png'                         , type=str            , help='Type of saved figure', \
+            choices=['png', 'pdf', 'ps', 'eps', 'svg'])
+    parser.add_argument('--output'       , default='wikigraph'                   , type=str            , help='Prefix of saved figure')
+
 
     ARGS, EXTRA_ARGS = parser.parse_known_args()
 
     # HACK!
     kwargs = {}
     kwargs.update(zip(EXTRA_ARGS[0:len(EXTRA_ARGS):2], map(lambda ee: float(ee), EXTRA_ARGS[1:len(EXTRA_ARGS):2])))
+    #kwargs['horizontalalignment'] = 'left' #'center', #'right' # passed to draw_networkx_labels()
 
 
     print "\n\n\nTESTING>\n\n\n" + str(ARGS) + "\n\n\n"
@@ -505,9 +503,34 @@ if __name__ == "__main__":
         print "Removed {} isolated nodes".format(Nrm_nodes)
 
 
-    WG.draw(design=ARGS.design, labels=ARGS.labels, **kwargs)
 
 
+
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+
+    fig = mpl.pyplot.figure(1, figsize=(15,9))
+    fig.clear()
+    WG.draw(layout=ARGS.layout, labels=ARGS.labels, **kwargs)
+    mpl.pyplot.axis('image')
+    mpl.pyplot.axis('off')
+
+
+    fig.patch.set_alpha(ARGS.figalpha)
+    map(lambda ax: ax.patch.set_alpha(ARGS.figalpha), fig.get_axes())
+
+    circles = fig.findobj(mpl.collections.CircleCollection)
+    map(lambda x: x.set_linewidth(0), circles)
+
+    labels = fig.findobj(mpl.text.Text)
+    map(lambda x: x.set_clip_on(False), labels)
+
+    import datetime
+    datestr = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+
+    fig.show()
+    fig.savefig(ARGS.output + "_" + datestr + "." + ARGS.figtype, dpi=ARGS.figdpi, bbox_inches='tight', pad_inches=0.5)
 
 
 
