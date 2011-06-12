@@ -5,7 +5,7 @@ _WikiGraph_ is a tool that I wrote in Python to extract and visualize the link s
 
 Several examples generated using _WikiGraph_ are included in the results directory, e.g. ![this figure][]
 
-![this figure]: https://github.com/tub78/WikiGraph/blob/hg/results/wg-family-bicycle-work-rev2_2011-06-10_23-23-35.png
+[this figure]: https://github.com/tub78/WikiGraph/blob/hg/results/wg-family-bicycle-work-rev2_2011-06-10_23-23-35.png
 <!-- http://lh3.ggpht.com/-tlIKybACStc/TfLlhFKoh7I/AAAAAAAABHM/nVseuLoi6Lw/wg-family-bicycle-work-rev2_2011-06-10_23-23-35.jpg -->
 
 # Assumptions
