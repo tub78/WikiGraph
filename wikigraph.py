@@ -186,14 +186,14 @@ class WikiGraph:
     #
     def __repr__(self):
         """ Page names and adjacency structure """
-        import numpy as np
         import networkx as nx
-        import scipy as sp
 
         if self.num_pages() == 0:
             return "Empty WikiGraph"
-        elif self.num_pages() <= 10:
-            return str(self._graph.nodes()) + "\n" + str(nx.convert.to_scipy_sparse_matrix(self._graph, dtype=np.int16))
+        #elif self.num_pages() <= 10:
+        #    import numpy as np
+        #    import scipy as sp
+        #    return str(self._graph.nodes()) + "\n" + str(nx.convert.to_scipy_sparse_matrix(self._graph, dtype=np.int16))
         else:
             return "Nodes: {}, Edges: {}".format(self._graph.number_of_nodes(), self._graph.number_of_edges())
         #

@@ -22,6 +22,7 @@ _WikiGraph_ makes several assumptions:
     
     Tags may be used to filter the wiki to produce subgraphs of a manageable size.
 
+_WikiGraph_ depends on `matplotlib` and `networkx`, in addition to several standard modules.
 
 # Usage
 
