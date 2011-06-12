@@ -89,3 +89,4 @@ wikigraph.py --directory $NOTES \
 
 
 <!-- vim: set ft=vimwiki: -->
+
