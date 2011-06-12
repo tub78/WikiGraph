@@ -446,7 +446,7 @@ if __name__ == "__main__":
     import sys
     import argparse
 
-    parser = argparse.ArgumentParser(description='Analyze and visualize semantics and link structure of wiki', epilog='Additional arguments pairs are passed to the drawing routine as keyword-values (floats assumed).')
+    parser = argparse.ArgumentParser(description='Extract and visualize the link structure of a wiki', epilog='Additional arguments pairs are passed to the drawing routine as keyword-values (floats assumed).')
 
     parser.add_argument('--verbosity'    , default=0                             , type=int            , help='Level of verbosity for logging')
     parser.add_argument('--directory'    , default='/Users/stu/TrunkNotes/Notes' , type=str            , help='Directory where files containing wiki pages are stored (flat)')
