@@ -3,9 +3,10 @@
 
 _WikiGraph_ is a tool that I wrote in Python to extract and visualize the link structure from a collection of wiki pages.  It scans a wiki, extracts links and tags, filters and prunes the resulting graph, and displays the resulting graph in an attractive manner.
 
-See [figure][] for an example that was created using _WikiGraph_.
+Several examples generated using _WikiGraph_ are included in the results directory, e.g. ![this figure][]
 
-[figure]: http://lh3.ggpht.com/-tlIKybACStc/TfLlhFKoh7I/AAAAAAAABHM/nVseuLoi6Lw/wg-family-bicycle-work-rev2_2011-06-10_23-23-35.jpg
+![this figure]: https://github.com/tub78/WikiGraph/blob/hg/results/wg-family-bicycle-work-rev2_2011-06-10_23-23-35.png
+<!-- http://lh3.ggpht.com/-tlIKybACStc/TfLlhFKoh7I/AAAAAAAABHM/nVseuLoi6Lw/wg-family-bicycle-work-rev2_2011-06-10_23-23-35.jpg -->
 
 # Assumptions
 
