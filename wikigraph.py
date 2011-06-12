@@ -526,11 +526,11 @@ if __name__ == "__main__":
     map(lambda x: x.set_clip_on(False), labels)
 
     import datetime
-    datestr = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    datestr = datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
 
 
     fig.show()
-    fig.savefig(ARGS.output + "_" + datestr + "." + ARGS.figtype, dpi=ARGS.figdpi, bbox_inches='tight', pad_inches=0.5)
+    fig.savefig(ARGS.output + "-" + datestr + "." + ARGS.figtype, dpi=ARGS.figdpi, bbox_inches='tight', pad_inches=0.5)
 
 
 
