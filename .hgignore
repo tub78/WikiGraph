@@ -32,6 +32,8 @@ syntax: glob
 .RData
 .Rhistory
 
+results
+
 
 # Regular Expressions
 # ... "^" forces hgignore to match only the repository root
