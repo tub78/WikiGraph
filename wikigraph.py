@@ -438,13 +438,20 @@ def whole_number(string):
     #
 
 #
-if __name__ == "__main__":
+# WARNING: use CLI with ipython, e.g.: python -m doctest -v MODULE.py
+def _test():
+    import doctest
+    doctest.testmod(verbose=True)
 
-    #import doctest
-    #doctest.testmod()
+#
+def main(args=None):
 
     import sys
     import argparse
+
+    #import doctest
+    #doctest.testmod(verbose=True)
+    #return
 
     parser = argparse.ArgumentParser(description='Extract and visualize the link structure of a wiki', epilog='Additional arguments pairs are passed to the drawing routine as keyword-values (floats assumed).')
 
@@ -466,9 +473,17 @@ if __name__ == "__main__":
     parser.add_argument('--figtype'      , default='png'                         , type=str            , help='Type of saved figure', \
             choices=['png', 'pdf', 'ps', 'eps', 'svg'])
     parser.add_argument('--output'       , default='wikigraph'                   , type=str            , help='Prefix of saved figure')
+    parser.add_argument('--test'         , default=False                         , action='store_true' , help=argparse.SUPPRESS)
 
 
-    ARGS, EXTRA_ARGS = parser.parse_known_args()
+    if args is None:
+        args = sys.argv[1:]
+
+    ARGS, EXTRA_ARGS = parser.parse_known_args(args)
+
+    if ARGS.test:
+        _test()
+        return
 
     # HACK!
     kwargs = {}
@@ -480,8 +495,9 @@ if __name__ == "__main__":
     #print "."*30 + " PROCEEDING TO SYS.EXIT()\n\n\n"; sys.exit()
 
     WG = WikiGraph()
-    WG.add_pages(get_files_from_path_with_ext(ARGS.directory, ARGS.extension))
-    WG.add_links()
+    Nadd_nodes = WG.add_pages(get_files_from_path_with_ext(ARGS.directory, ARGS.extension))
+    Nadd_links = WG.add_links()
+    print "Added {} nodes, {} links, between {} resources".format(Nadd_nodes, Nadd_links, WG.num_pages())
 
     if not(ARGS.keepunknown):
         Nrm_nodes = WG.prune_unknown_paths()
@@ -533,5 +549,9 @@ if __name__ == "__main__":
     fig.savefig(ARGS.output + "-" + datestr + "." + ARGS.figtype, dpi=ARGS.figdpi, bbox_inches='tight', pad_inches=0.5)
 
 
+
+#
+if __name__ == '__main__':
+    main()
 
 
